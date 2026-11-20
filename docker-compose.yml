@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: neurolit
+      POSTGRES_PASSWORD: neurolit   # local development only; real secrets go in .env / platform secrets
+      POSTGRES_DB: neurolit
+    ports:
+      - "5433:5432"   # 5433 on the host so it does not clash with a locally installed PostgreSQL
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neurolit -d neurolit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
