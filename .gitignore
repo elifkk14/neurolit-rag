@@ -1,0 +1,16 @@
+# secrets
+.env
+
+# downloaded data (re-create with: python -m ingest.pubmed)
+data/raw/*
+!data/raw/.gitkeep
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# os
+.DS_Store

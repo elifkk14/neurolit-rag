@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID Version="1">11111111</PMID>
+      <Article>
+        <Journal>
+          <JournalIssue><PubDate><Year>2021</Year><Month>Mar</Month></PubDate></JournalIssue>
+          <Title>Journal of Test Neuroimaging</Title>
+        </Journal>
+        <ArticleTitle>Amyloid <i>PET</i> in early Alzheimer disease.</ArticleTitle>
+        <Abstract>
+          <AbstractText Label="BACKGROUND">Amyloid accumulates early.</AbstractText>
+          <AbstractText Label="RESULTS">Tau PET tracked <sup>18</sup>F decline.</AbstractText>
+        </Abstract>
+      </Article>
+    </MedlineCitation>
+  </PubmedArticle>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID Version="1">22222222</PMID>
+      <Article>
+        <Journal>
+          <JournalIssue><PubDate><MedlineDate>2019 Nov-Dec</MedlineDate></PubDate></JournalIssue>
+          <Title>Plain Abstract Journal</Title>
+        </Journal>
+        <ArticleTitle>Hippocampal atrophy on MRI.</ArticleTitle>
+        <Abstract><AbstractText>Unstructured abstract text.</AbstractText></Abstract>
+      </Article>
+    </MedlineCitation>
+  </PubmedArticle>
+  <PubmedArticle>
+    <MedlineCitation>
+      <PMID Version="1">33333333</PMID>
+      <Article>
+        <Journal><JournalIssue><PubDate><Year>2020</Year></PubDate></JournalIssue><Title>X</Title></Journal>
+        <ArticleTitle>Letter without abstract.</ArticleTitle>
+      </Article>
+    </MedlineCitation>
+  </PubmedArticle>
+</PubmedArticleSet>
