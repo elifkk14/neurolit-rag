@@ -12,3 +12,12 @@ EMBED_DIM = 384
 # CPU by default: free hosting has no GPU, and the small model is fast enough on CPU.
 # (On macOS 14 the "mps" backend of recent torch versions also crashes.)
 EMBED_DEVICE = os.getenv("EMBED_DEVICE", "cpu")
+
+# Retrieval
+TOP_K = int(os.getenv("TOP_K", "5"))
+
+# LLM: "groq" (hosted, free tier) or "ollama" (local). Switching provider = changing one variable.
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
+LLM_MODEL = os.getenv("LLM_MODEL", "")  # empty -> provider default (see app/llm.py)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")

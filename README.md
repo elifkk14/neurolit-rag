@@ -4,13 +4,13 @@ Question answering over neuroimaging literature with retrieval-augmented generat
 Ask a question about Alzheimer's disease imaging, get an answer built only from PubMed
 abstracts, with every claim linked to its source (PMID).
 
-> 🚧 Work in progress. Day 2 of 10: embeddings and vector search.
+> 🚧 Work in progress. Day 3 of 10: cited answers from the command line.
 
 ## Status
 
 - [x] PubMed ingestion (E-utilities `esearch` + `efetch`)
 - [x] Embeddings (`bge-small-en-v1.5`) + PostgreSQL/pgvector with an HNSW index
-- [ ] Retrieval + cited answers (schema-validated)
+- [x] Retrieval (one best chunk per article) + cited answers, schema-validated, invented citations rejected
 - [ ] FastAPI service + Docker
 - [ ] Tests, evaluation (Recall@5, MRR), CI
 - [ ] Deployment, agent with tool calling, Kubernetes manifests
@@ -24,8 +24,18 @@ cp .env.example .env          # add your NCBI contact email
 docker compose up -d db       # PostgreSQL 17 + pgvector on localhost:5433
 python -m ingest.pubmed       # 5,000 abstracts, equal share per year 2015-2026
 python -m ingest.load data/raw/pubmed_YYYYMMDD.jsonl   # chunk, embed, store (~4 min on CPU)
+python -m app.ask "Can FDG-PET distinguish Alzheimer's disease from frontotemporal dementia?"
 pytest
 ```
+
+## How an answer is checked
+
+1. The model must return JSON matching a Pydantic schema (`found`, `answer`, `citations`).
+2. Every sentence must carry a `[PMID]` citation.
+3. Every cited PMID must be one of the abstracts that were retrieved for this question.
+
+If a check fails, the model gets the reason and one more try; otherwise the answer is refused.
+Questions outside the corpus get "I could not find an answer", not a guess.
 
 ## Data
 
