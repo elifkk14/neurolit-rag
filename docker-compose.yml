@@ -15,5 +15,18 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build: .
+    env_file: .env                 # GROQ_API_KEY etc. Never baked into the image.
+    environment:
+      # inside the compose network the database is reachable as "db" on its normal port
+      DATABASE_URL: postgresql://neurolit:neurolit@db:5432/neurolit
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:

@@ -4,28 +4,51 @@ Question answering over neuroimaging literature with retrieval-augmented generat
 Ask a question about Alzheimer's disease imaging, get an answer built only from PubMed
 abstracts, with every claim linked to its source (PMID).
 
-> 🚧 Work in progress. Day 3 of 10: cited answers from the command line.
+> 🚧 Work in progress. Day 4 of 10: web page, API and Docker.
 
 ## Status
 
 - [x] PubMed ingestion (E-utilities `esearch` + `efetch`)
 - [x] Embeddings (`bge-small-en-v1.5`) + PostgreSQL/pgvector with an HNSW index
 - [x] Retrieval (one best chunk per article) + cited answers, schema-validated, invented citations rejected
-- [ ] FastAPI service + Docker
+- [x] FastAPI service (`POST /ask`, `GET /health`, Swagger at `/docs`), web page, Docker Compose
 - [ ] Tests, evaluation (Recall@5, MRR), CI
 - [ ] Deployment, agent with tool calling, Kubernetes manifests
 
 ## Quick start
 
+Requires Docker and a free [Groq](https://console.groq.com) API key.
+
+```bash
+cp .env.example .env          # put GROQ_API_KEY in .env
+docker compose up -d          # PostgreSQL + pgvector and the API
+```
+
+Load the data once (from the host, into the database on port 5433):
+
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp .env.example .env          # add your NCBI contact email
-docker compose up -d db       # PostgreSQL 17 + pgvector on localhost:5433
 python -m ingest.pubmed       # 5,000 abstracts, equal share per year 2015-2026
 python -m ingest.load data/raw/pubmed_YYYYMMDD.jsonl   # chunk, embed, store (~4 min on CPU)
-python -m app.ask "Can FDG-PET distinguish Alzheimer's disease from frontotemporal dementia?"
-pytest
+```
+
+Then open http://localhost:8000 (API docs: http://localhost:8000/docs).
+
+```bash
+curl -X POST localhost:8000/ask -H 'Content-Type: application/json' \
+     -d '{"question": "Can FDG-PET distinguish Alzheimer disease from frontotemporal dementia?"}'
+pytest                        # tests use fakes, no database or API key needed
+```
+
+## Architecture
+
+```
+browser ──> FastAPI /ask ──> embed question (bge-small, CPU)
+                         ──> PostgreSQL + pgvector: HNSW top chunks, best chunk per article
+                         ──> LLM (Groq or Ollama, behind one interface) with the 5 abstracts
+                         ──> checks: JSON schema · every sentence cited · cited PMIDs were retrieved
+                         <── answer + sources (PubMed links)
 ```
 
 ## How an answer is checked

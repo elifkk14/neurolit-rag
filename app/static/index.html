@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeuroLit</title>
+<meta name="description" content="Cited answers from neuroimaging literature (PubMed abstracts).">
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --text: #1d1f23; --muted: #5d636e;
+    --line: #e3e1da; --accent: #1f5f8b; --accent-soft: #e6eff6; --warn: #8a5a00; --warn-soft: #fbf1dc;
+    --err: #a1262b; --err-soft: #fbe7e7;
+    --radius: 10px;
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --surface: #1c1f25; --text: #e7e9ec; --muted: #9aa1ac;
+      --line: #2c3038; --accent: #7db7e0; --accent-soft: #1d2c39; --warn: #e2b55c; --warn-soft: #2e2615;
+      --err: #f08a8e; --err-soft: #331b1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.55; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); margin: 0 0 28px; }
+
+  form { display: flex; gap: 8px; }
+  textarea {
+    flex: 1; resize: vertical; min-height: 52px; padding: 12px 14px; font: inherit; color: var(--text);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button {
+    font: inherit; font-weight: 600; padding: 0 20px; border: 0; border-radius: var(--radius);
+    background: var(--accent); color: var(--surface); cursor: pointer;
+  }
+  button:disabled { opacity: 0.55; cursor: progress; }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+  .examples button {
+    font-weight: 400; font-size: 0.85rem; padding: 5px 10px; background: var(--accent-soft); color: var(--accent);
+  }
+
+  #result { margin-top: 32px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .answer { margin: 0; font-size: 1.05rem; }
+  .cite { font-size: 0.8em; vertical-align: 0.15em; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .cite:hover { text-decoration: underline; }
+  .notice { padding: 14px 18px; border-radius: var(--radius); }
+  .notice.warn { background: var(--warn-soft); color: var(--warn); }
+  .notice.err { background: var(--err-soft); color: var(--err); }
+
+  h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 8px; }
+  ol.sources { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+  ol.sources li { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  ol.sources a { color: var(--text); text-decoration: none; font-weight: 600; }
+  ol.sources a:hover { color: var(--accent); }
+  .meta { color: var(--muted); font-size: 0.85rem; }
+  .stats { color: var(--muted); font-size: 0.8rem; margin-top: 16px; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.8rem; }
+  footer a { color: inherit; }
+  @media (max-width: 520px) { form { flex-direction: column; } button[type=submit] { padding: 12px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>NeuroLit</h1>
+  <p class="lede">Ask about Alzheimer's disease imaging research. Answers use only PubMed abstracts, and every sentence cites its source.</p>
+
+  <form id="ask">
+    <label for="q" hidden>Question</label>
+    <textarea id="q" name="q" maxlength="500" required placeholder="e.g. Can FDG-PET distinguish Alzheimer's disease from frontotemporal dementia?"></textarea>
+    <button type="submit" id="go">Ask</button>
+  </form>
+  <ul class="examples" aria-label="Example questions">
+    <li><button type="button">How does tau PET differ from amyloid PET in predicting cognitive decline?</button></li>
+    <li><button type="button">Which hippocampal MRI measures separate Alzheimer's disease from normal aging?</button></li>
+    <li><button type="button">Can FDG-PET distinguish Alzheimer's disease from frontotemporal dementia?</button></li>
+  </ul>
+
+  <section id="result" aria-live="polite"></section>
+
+  <footer>
+    For literature search only, not medical advice. Data: 5,000 PubMed abstracts (2015–2026).
+    · <a href="/docs">API</a>
+  </footer>
+</main>
+
+<script>
+  const form = document.getElementById("ask");
+  const input = document.getElementById("q");
+  const button = document.getElementById("go");
+  const result = document.getElementById("result");
+
+  // Build DOM nodes instead of using innerHTML: answer text comes from a model and
+  // titles from external data, so they are never interpreted as HTML.
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) node.append(c);
+    return node;
+  }
+
+  // "Text [111, 222]." -> text nodes + superscript links to the matching source numbers.
+  function renderAnswer(text, sources) {
+    const index = new Map(sources.map((s, i) => [s.pmid, i + 1]));
+    const p = el("p", { class: "answer" });
+    let last = 0;
+    for (const m of text.matchAll(/\[(\d+(?:\s*[,;]\s*\d+)*)\]/g)) {
+      p.append(text.slice(last, m.index));
+      const pmids = m[1].split(/\s*[,;]\s*/);
+      pmids.forEach((pmid, i) => {
+        const n = index.get(pmid) ?? "?";
+        p.append(el("a", { class: "cite", href: `#src-${pmid}`, title: `PMID ${pmid}` }, `[${n}]`));
+        if (i < pmids.length - 1) p.append(" ");
+      });
+      last = m.index + m[0].length;
+    }
+    p.append(text.slice(last));
+    return p;
+  }
+
+  function show(...nodes) { result.replaceChildren(...nodes); }
+
+  async function ask(question) {
+    button.disabled = true;
+    show(el("p", { class: "meta" }, el("span", { class: "spinner", "aria-hidden": "true" }), "Searching abstracts and writing a cited answer…"));
+    try {
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = typeof data.detail === "string" ? data.detail : "The question could not be processed.";
+        show(el("div", { class: "notice err" }, msg));
+        return;
+      }
+      if (!data.found) {
+        show(el("div", { class: "notice warn" }, data.answer));
+        return;
+      }
+      const list = el("ol", { class: "sources" });
+      data.sources.forEach((s, i) => {
+        list.append(el("li", { id: `src-${s.pmid}` },
+          el("span", { class: "meta" }, `[${i + 1}] `),
+          el("a", { href: s.url, target: "_blank", rel: "noopener" }, s.title),
+          el("div", { class: "meta" }, `${s.journal}, ${s.year ?? "n.d."} · PMID ${s.pmid}`)));
+      });
+      show(
+        el("div", { class: "card" }, renderAnswer(data.answer, data.sources)),
+        el("h2", {}, "Sources"),
+        list,
+        el("p", { class: "stats" },
+          `${data.model} · retrieval ${Math.round(data.timings.retrieval_ms)} ms · answer ${(data.timings.llm_ms / 1000).toFixed(1)} s`),
+      );
+    } catch (e) {
+      show(el("div", { class: "notice err" }, "Could not reach the server."));
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if (q.length >= 3) ask(q);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+  document.querySelectorAll(".examples button").forEach((b) =>
+    b.addEventListener("click", () => { input.value = b.textContent; ask(b.textContent); }));
+</script>
+</body>
+</html>
