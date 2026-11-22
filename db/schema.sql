@@ -25,3 +25,18 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw
     ON chunks USING hnsw (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS chunks_pmid ON chunks (pmid);
+
+-- Keyword search (for hybrid retrieval). A generated column is recomputed by PostgreSQL
+-- whenever `text` changes, so it can never be out of sync with the chunk.
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', text)) STORED;
+
+CREATE INDEX IF NOT EXISTS chunks_tsv_gin ON chunks USING gin (tsv);
+
+-- How many chunks contain each word (lexeme): the "df" in IDF = log(N / df).
+-- PostgreSQL's ts_rank has no IDF, so keyword search computes it from this table.
+-- Refreshed by ingest.load after every load.
+CREATE TABLE IF NOT EXISTS lexeme_df (
+    lexeme TEXT PRIMARY KEY,
+    ndoc   INTEGER NOT NULL
+);

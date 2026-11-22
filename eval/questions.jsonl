@@ -1,0 +1,30 @@
+{"id": 1, "question": "Which brain regions show weaker structural network connectivity in people with mild cognitive impairment, based on regression over MRI-derived connectomes?", "relevant": ["29135998"]}
+{"id": 2, "question": "How much do the choice of brain parcellation template and imaging type affect machine learning prediction of Alzheimer's?", "relevant": ["26318777"]}
+{"id": 3, "question": "Do HIV-positive patients in Asia have more white matter lesions and grey matter loss on brain scans than uninfected people?", "relevant": ["32988259"]}
+{"id": 4, "question": "Is the brain's waste clearance system disrupted by high blood pressure in animal models?", "relevant": ["31209176"]}
+{"id": 5, "question": "Are patients with memory-predominant cognitive impairment worse at recognizing fear in music?", "relevant": ["31567383"]}
+{"id": 6, "question": "Can brain imaging be used to quantify an individual's resilience to Alzheimer's pathology?", "relevant": ["28631336"]}
+{"id": 7, "question": "In familial early-onset Alzheimer's mutation carriers, how does arterial spin labeling perfusion relate to glucose metabolism and amyloid deposition?", "relevant": ["29527482"]}
+{"id": 8, "question": "Can amyloid PET be quantified in Centiloids using CT-based brain segmentation instead of MRI?", "relevant": ["41029783"]}
+{"id": 9, "question": "Does combining shape and diffusion features of medial temporal structures improve Alzheimer's classification compared with volume alone?", "relevant": ["27211255"]}
+{"id": 10, "question": "How much does amyloid burden drop on follow-up PET scans after anti-amyloid antibody therapy in routine clinical practice?", "relevant": ["42507054"]}
+{"id": 11, "question": "Do dopamine transporter and neurotrophic factor gene variants jointly influence amyloid and tau accumulation?", "relevant": ["37948982"]}
+{"id": 12, "question": "Which software segments brain tissue most reliably on noisy MRI scans, tested with a phantom?", "relevant": ["26211622"]}
+{"id": 13, "question": "Can gadolinium-based probes that bind amyloid plaques be used for MRI detection in transgenic mice?", "relevant": ["26234669"]}
+{"id": 14, "question": "Is neuroinflammation measured with PET linked to smaller hippocampi in Alzheimer's and Parkinson's dementia?", "relevant": ["27060942"]}
+{"id": 15, "question": "Does a multitask learning model that combines several imaging modalities improve longitudinal prediction of Alzheimer's progression?", "relevant": ["31678502"]}
+{"id": 16, "question": "Can the plasma A\u03b242/A\u03b240 ratio identify cognitively normal older adults who have brain amyloid?", "relevant": ["31424403"]}
+{"id": 17, "question": "How well do transfer-learned convolutional networks with weight averaging classify Alzheimer's from structural MRI?", "relevant": ["39178890"]}
+{"id": 18, "question": "Is there a compound that can both image amyloid aggregates with PET and destroy them when activated by light?", "relevant": ["42376965"]}
+{"id": 19, "question": "Do different software tools for building normal reference databases change the hypometabolism patterns found in FDG-PET?", "relevant": ["26281849"]}
+{"id": 20, "question": "Do in vivo and postmortem diffusion MRI changes in the medial temporal lobe reflect neuron loss in dementia?", "relevant": ["43024001"]}
+{"id": 21, "question": "Does white matter damage explain why the default mode network deactivates less with aging and Alzheimer's pathology?", "relevant": ["29758374"]}
+{"id": 22, "question": "How consistent are different readers when visually interpreting amyloid PET scans across sites?", "relevant": ["41030129"]}
+{"id": 23, "question": "Is there a specific glucose metabolism covariance pattern that separates normal pressure hydrocephalus from Alzheimer's and Parkinson's disease?", "relevant": ["37980531"]}
+{"id": 24, "question": "Are changes in eating habits in dementia related to loss of semantic knowledge and temporal lobe atrophy?", "relevant": ["31617330"]}
+{"id": 25, "question": "Which subregions of the amygdala and medial temporal lobe shrink earliest in Alzheimer's on high-resolution MRI?", "relevant": ["37486408"]}
+{"id": 26, "question": "Is cortisol in cerebrospinal fluid associated with worse tau, imaging and cognitive outcomes over two years?", "relevant": ["42518151"]}
+{"id": 27, "question": "What did the first human study of a new PET tracer for \u03b14\u03b22 nicotinic receptors find in Alzheimer's patients?", "relevant": ["32935187"]}
+{"id": 28, "question": "How do diffusion tensor imaging findings in the corpus callosum differ between normal pressure hydrocephalus and Alzheimer's?", "relevant": ["26646649"]}
+{"id": 29, "question": "How accurate is a 3D densely connected neural network combined with hippocampal shape features for diagnosing Alzheimer's?", "relevant": ["30475734"]}
+{"id": 30, "question": "In a streptozotocin rat model, do white matter changes appear before functional connectivity changes?", "relevant": ["37936236"]}

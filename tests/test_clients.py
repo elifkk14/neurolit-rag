@@ -8,10 +8,11 @@ import ingest.pubmed as pubmed
 
 
 class FakeResponse:
-    def __init__(self, status=200, json_data=None, text=""):
+    def __init__(self, status=200, json_data=None, text="", headers=None):
         self.status_code = status
         self._json = json_data
         self.text = text
+        self.headers = headers or {}
 
     def json(self):
         return self._json
@@ -47,6 +48,26 @@ def test_groq_requires_api_key():
 
 
 def test_groq_http_error_propagates(monkeypatch):
+    monkeypatch.setattr(llm.requests, "post", lambda *a, **k: FakeResponse(status=401))
+    with pytest.raises(requests.HTTPError):
+        llm.GroqClient("k").complete_json("s", "u")
+
+
+def test_groq_waits_retry_after_on_rate_limit_then_succeeds(monkeypatch):
+    waits = []
+    monkeypatch.setattr(llm.time, "sleep", waits.append)
+    replies = [
+        FakeResponse(status=429, headers={"retry-after": "7"}),
+        FakeResponse(status=429, headers={"retry-after": "120"}),  # capped
+        FakeResponse(json_data={"choices": [{"message": {"content": "{}"}}]}),
+    ]
+    monkeypatch.setattr(llm.requests, "post", lambda *a, **k: replies.pop(0))
+    assert llm.GroqClient("k").complete_json("s", "u") == "{}"
+    assert waits == [7.0, 30]
+
+
+def test_groq_gives_up_after_max_retries(monkeypatch):
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
     monkeypatch.setattr(llm.requests, "post", lambda *a, **k: FakeResponse(status=429))
     with pytest.raises(requests.HTTPError):
         llm.GroqClient("k").complete_json("s", "u")

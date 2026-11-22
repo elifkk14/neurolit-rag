@@ -134,12 +134,12 @@ def test_retrieve_orders_by_similarity_and_keeps_one_chunk_per_article(conn, mon
     assert conn.execute("SELECT count(*) FROM chunks WHERE pmid = '1'").fetchone()[0] >= 2
 
     monkeypatch.setattr(retrieve_mod, "embed_query", lambda q: unit((0, 1.0)))
-    results = retrieve_mod.retrieve(conn, "tau?", k=3)
+    results = retrieve_mod.retrieve(conn, "tau?", k=3, mode="vector")
 
     assert [p.pmid for p in results] == ["1", "2", "3"]  # each article once, best first
     assert results[0].score == pytest.approx(1.0, abs=1e-4)
     assert results[0].score > results[1].score > results[2].score
-    assert retrieve_mod.retrieve(conn, "tau?", k=2)[-1].pmid == "2"  # k is respected
+    assert retrieve_mod.retrieve(conn, "tau?", k=2, mode="vector")[-1].pmid == "2"  # k is respected
 
 
 def test_vector_query_uses_hnsw_index(conn, monkeypatch):
@@ -155,3 +155,62 @@ def test_vector_query_uses_hnsw_index(conn, monkeypatch):
     )
     conn.execute("RESET enable_seqscan")
     assert "chunks_embedding_hnsw" in plan
+
+
+def test_keyword_mode_matches_stemmed_words(conn, monkeypatch):
+    monkeypatch.setattr(load_mod, "embed_passages", fake_embed({"": unit((0, 1))}))
+    load_mod.load(
+        conn,
+        [
+            doc("1", "Perfusion", "Arterial spin labeling measured cerebral perfusion in carriers."),
+            doc("2", "Glucose", "FDG measured glucose metabolism."),
+            doc("3", "Unrelated", "Nothing relevant here."),
+        ],
+    )
+    load_mod.refresh_term_stats(conn)
+    # "labelled" and "carrier" must match "labeling" and "carriers" through English stemming
+    results = retrieve_mod.retrieve(
+        conn, "arterial spin labelled perfusion in mutation carrier", k=5, mode="keyword"
+    )
+    assert [p.pmid for p in results] == ["1"]
+
+
+def test_hybrid_mode_returns_articles_found_by_either_method(conn, monkeypatch):
+    vectors = {"meaning": unit((0, 1.0)), "words": unit((1, 1.0))}
+    monkeypatch.setattr(load_mod, "embed_passages", fake_embed(vectors))
+    load_mod.load(
+        conn,
+        [doc("1", "A", "meaning only text."), doc("2", "B", "words hippocampus atrophy.")],
+    )
+    load_mod.refresh_term_stats(conn)
+    monkeypatch.setattr(retrieve_mod, "embed_query", lambda q: unit((0, 1.0)))  # close to article 1
+    results = retrieve_mod.retrieve(conn, "hippocampus atrophy", k=5, mode="hybrid")  # words match article 2
+    assert {p.pmid for p in results} == {"1", "2"}
+
+
+def test_keyword_search_ignores_words_found_in_most_chunks(conn, monkeypatch):
+    monkeypatch.setattr(load_mod, "embed_passages", fake_embed({"": unit((0, 1))}))
+    # "alzheimer" is in every chunk -> carries no information; "streptozotocin" is rare
+    docs = [doc(str(i), f"T{i}", f"Alzheimer cohort number {i}.") for i in range(30)]
+    docs.append(doc("rat", "Rat", "Alzheimer streptozotocin rat model."))
+    load_mod.load(conn, docs)
+    load_mod.refresh_term_stats(conn)
+
+    ranked = [p.pmid for p in retrieve_mod.retrieve(conn, "alzheimer streptozotocin", k=5, mode="keyword")]
+    assert ranked == ["rat"]  # "alzheimer" (in every chunk) is dropped, so only the rare word counts
+
+
+def test_keyword_search_weights_rare_words_higher(conn, monkeypatch):
+    monkeypatch.setattr(load_mod, "embed_passages", fake_embed({"": unit((0, 1))}))
+    docs = [doc(f"m{i}", f"M{i}", f"Transgenic mice study {i}.") for i in range(5)]
+    docs += [doc(f"x{i}", f"X{i}", f"Human cohort {i}.") for i in range(10)]
+    docs.append(doc("gd", "Gd", "Gadolinium contrast in humans."))
+    load_mod.load(conn, docs)
+    load_mod.refresh_term_stats(conn)
+
+    ranked = [
+        p.pmid
+        for p in retrieve_mod.retrieve(conn, "gadolinium probes in transgenic mice", k=3, mode="keyword")
+    ]
+    # "gadolinium" (1 chunk) outweighs "transgenic" + "mice" (5 chunks each) on its own
+    assert ranked[0] == "gd"

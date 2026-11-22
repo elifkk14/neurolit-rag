@@ -21,3 +21,8 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
 LLM_MODEL = os.getenv("LLM_MODEL", "")  # empty -> provider default (see app/llm.py)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+
+# "vector", "keyword" or "hybrid" (both fused with Reciprocal Rank Fusion). Chosen from eval/run.py results.
+RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "vector")
+# Keyword search ignores words that occur in more than this share of chunks (see db/schema.sql).
+KEYWORD_MAX_DF = float(os.getenv("KEYWORD_MAX_DF", "0.5"))

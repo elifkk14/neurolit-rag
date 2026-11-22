@@ -6,11 +6,15 @@ decided by LLM_PROVIDER, so moving from a local model to a hosted one is a confi
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Protocol
 
 import requests
 
 from app import config
+
+log = logging.getLogger("app.llm")
 
 
 class LLMClient(Protocol):
@@ -35,8 +39,24 @@ class GroqClient:
         self.timeout = timeout
         self.name = f"groq:{self.model}"
 
+    MAX_RETRIES = 3
+    MAX_WAIT_S = 30  # never keep a web request waiting longer than this per retry
+
     def complete_json(self, system: str, user: str) -> str:
-        resp = requests.post(
+        # Free tier: 8,000 tokens/minute, i.e. ~3 questions/minute with 5 abstracts each.
+        # On 429 Groq says how long to wait (Retry-After); we wait and retry a few times.
+        for attempt in range(self.MAX_RETRIES + 1):
+            resp = self._post(system, user)
+            if resp.status_code != 429 or attempt == self.MAX_RETRIES:
+                break
+            wait = min(float(resp.headers.get("retry-after", 2**attempt)), self.MAX_WAIT_S)
+            log.warning("Groq rate limit, waiting %.0f s (retry %d/%d)", wait, attempt + 1, self.MAX_RETRIES)
+            time.sleep(wait)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+    def _post(self, system: str, user: str) -> requests.Response:
+        return requests.post(
             self.URL,
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={
@@ -47,8 +67,6 @@ class GroqClient:
             },
             timeout=self.timeout,
         )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
 
 
 class OllamaClient:

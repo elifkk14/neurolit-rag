@@ -68,6 +68,13 @@ def load(conn: psycopg.Connection, docs: list[dict]) -> int:
     return total_chunks
 
 
+def refresh_term_stats(conn: psycopg.Connection) -> None:
+    """Recount in how many chunks each word occurs (used by keyword search)."""
+    with conn.transaction():
+        conn.execute("TRUNCATE lexeme_df")
+        conn.execute("INSERT INTO lexeme_df SELECT word, ndoc FROM ts_stat('SELECT tsv FROM chunks')")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -83,6 +90,7 @@ def main() -> None:
         conn.commit()
         register_vector(conn)  # lets psycopg send numpy arrays as pgvector values
         n_chunks = load(conn, docs)
+        refresh_term_stats(conn)
     log.info("done: %d documents, %d chunks in %.0f s", len(docs), n_chunks, time.perf_counter() - start)
 
 
