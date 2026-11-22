@@ -4,7 +4,7 @@ Question answering over neuroimaging literature with retrieval-augmented generat
 Ask a question about Alzheimer's disease imaging, get an answer built only from PubMed
 abstracts, with every claim linked to its source (PMID).
 
-> 🚧 Work in progress. Day 4 of 10: web page, API and Docker.
+> 🚧 Work in progress. Day 5 of 10: tests.
 
 ## Status
 
@@ -12,7 +12,8 @@ abstracts, with every claim linked to its source (PMID).
 - [x] Embeddings (`bge-small-en-v1.5`) + PostgreSQL/pgvector with an HNSW index
 - [x] Retrieval (one best chunk per article) + cited answers, schema-validated, invented citations rejected
 - [x] FastAPI service (`POST /ask`, `GET /health`, Swagger at `/docs`), web page, Docker Compose
-- [ ] Tests, evaluation (Recall@5, MRR), CI
+- [x] Tests: 44 (unit + PostgreSQL integration), 83% coverage
+- [ ] Evaluation (Recall@5, MRR), CI
 - [ ] Deployment, agent with tool calling, Kubernetes manifests
 
 ## Quick start
@@ -38,7 +39,7 @@ Then open http://localhost:8000 (API docs: http://localhost:8000/docs).
 ```bash
 curl -X POST localhost:8000/ask -H 'Content-Type: application/json' \
      -d '{"question": "Can FDG-PET distinguish Alzheimer disease from frontotemporal dementia?"}'
-pytest                        # tests use fakes, no database or API key needed
+pytest                        # unit tests use fakes; integration tests need the compose db (else skipped)
 ```
 
 ## Architecture

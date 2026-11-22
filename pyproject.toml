@@ -11,3 +11,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: needs a running PostgreSQL with pgvector (docker compose up -d db)"]
