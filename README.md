@@ -6,7 +6,8 @@ Question answering over neuroimaging literature with retrieval-augmented generat
 Ask a question about Alzheimer's disease imaging, get an answer built only from PubMed
 abstracts, with every claim linked to its source (PMID).
 
-> 🚧 Work in progress: deployment is next.
+**Live demo: https://neurolit-2e56.onrender.com** (free tier: after 15 idle minutes the first
+request wakes the server, which takes about a minute; limited to 5 questions per visitor per 10 minutes).
 
 ## Status
 
@@ -14,10 +15,10 @@ abstracts, with every claim linked to its source (PMID).
 - [x] Embeddings (`bge-small-en-v1.5`) + PostgreSQL/pgvector with an HNSW index
 - [x] Retrieval (one best chunk per article) + cited answers, schema-validated, invented citations rejected
 - [x] FastAPI service (`POST /ask`, `GET /health`, Swagger at `/docs`), web page, Docker Compose
-- [x] Tests: 54 (unit + PostgreSQL integration), 83% coverage
+- [x] Tests: 60 (unit + PostgreSQL integration), 84% coverage
 - [x] Evaluation: 30 known-item questions, vector vs keyword vs hybrid (Recall@k, MRR)
 - [x] CI: GitHub Actions runs lint and all tests (with a pgvector service container), then builds the Docker image and publishes it to GHCR
-- [ ] Deployment, agent with tool calling, Kubernetes manifests
+- [x] Deployment: Render (free) + Neon PostgreSQL + Groq, rate-limited, 0 cost
 
 ## Quick start
 
@@ -34,7 +35,7 @@ Load the data once (from the host, into the database on port 5433):
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 python -m ingest.pubmed       # 5,000 abstracts, equal share per year 2015-2026
-python -m ingest.load data/raw/pubmed_YYYYMMDD.jsonl   # chunk, embed, store (~4 min on CPU)
+python -m ingest.load data/raw/pubmed_YYYYMMDD.jsonl   # chunk, embed, store
 ```
 
 Then open http://localhost:8000 (API docs: http://localhost:8000/docs).
@@ -49,12 +50,30 @@ pytest                        # unit tests use fakes; integration tests need the
 ## Architecture
 
 ```
-browser ──> FastAPI /ask ──> embed question (bge-small, CPU)
+browser ──> FastAPI /ask ──> embed question (bge-small, ONNX Runtime, CPU)
                          ──> PostgreSQL + pgvector: HNSW top chunks, best chunk per article
                          ──> LLM (Groq or Ollama, behind one interface) with the 5 abstracts
                          ──> checks: JSON schema · every sentence cited · cited PMIDs were retrieved
                          <── answer + sources (PubMed links)
 ```
+
+## Deployment
+
+| Part | Service (free plan, no card) | Notes |
+|---|---|---|
+| API + web page | Render web service, 512 MB RAM, 0.1 CPU | runs the image CI publishes to `ghcr.io/elifkk14/neurolit-rag` |
+| Database | Neon PostgreSQL 17 + pgvector | 63 MB used; the pool re-checks connections because Neon suspends when idle |
+| LLM | Groq | free quota ≈ 3 questions/min, so the API limits each visitor to 5 questions / 10 min and everyone together to 3 / min (HTTP 429 with `Retry-After`) |
+
+**Fitting 512 MB.** The first image ran the embedding model with PyTorch (2.37 GB image), which
+does not fit the free server. The same `bge-small-en-v1.5` model now runs with ONNX Runtime
+(`fastembed`). Before switching, the two were compared: identical vectors (cosine similarity
+1.0000 on the 30 eval questions and 50 abstracts), so the stored embeddings were kept and the
+retrieval metrics did not change. Image: 2.37 GB → 805 MB; memory in use: about 190 MB.
+
+**Live latency** (5 questions on the deployed service, measured from Ankara, warm server):
+median 3.0 s end to end (retrieval 0.5–0.8 s on 0.1 CPU including the database round trip,
+LLM 1.2–2.1 s). Too few requests for a meaningful P95: the rate limit is deliberately tight.
 
 ## How an answer is checked
 
