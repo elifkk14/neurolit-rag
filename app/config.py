@@ -9,9 +9,11 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neurolit:neurolit@localhost:5433/neurolit")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
 EMBED_DIM = 384
-# CPU by default: free hosting has no GPU, and the small model is fast enough on CPU.
-# (On macOS 14 the "mps" backend of recent torch versions also crashes.)
-EMBED_DEVICE = os.getenv("EMBED_DEVICE", "cpu")
+# The model runs with ONNX Runtime (fastembed) instead of PyTorch: same vectors (cosine 1.0000
+# on our data), but ~10x less memory, so it fits a free 512 MB server.
+# 1 thread: free servers get a fraction of a CPU, and extra threads only compete for it.
+EMBED_THREADS = int(os.getenv("EMBED_THREADS", "1"))
+EMBED_CACHE_DIR = os.getenv("FASTEMBED_CACHE_PATH") or None  # None -> fastembed default
 
 # Retrieval
 TOP_K = int(os.getenv("TOP_K", "5"))
