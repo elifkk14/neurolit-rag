@@ -1,10 +1,12 @@
 # NeuroLit
 
+[![CI](https://github.com/elifkk14/neurolit-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/elifkk14/neurolit-rag/actions/workflows/ci.yml)
+
 Question answering over neuroimaging literature with retrieval-augmented generation (RAG).
 Ask a question about Alzheimer's disease imaging, get an answer built only from PubMed
 abstracts, with every claim linked to its source (PMID).
 
-> 🚧 Work in progress. Day 6 of 10: retrieval evaluation.
+> 🚧 Work in progress: deployment is next.
 
 ## Status
 
@@ -12,9 +14,9 @@ abstracts, with every claim linked to its source (PMID).
 - [x] Embeddings (`bge-small-en-v1.5`) + PostgreSQL/pgvector with an HNSW index
 - [x] Retrieval (one best chunk per article) + cited answers, schema-validated, invented citations rejected
 - [x] FastAPI service (`POST /ask`, `GET /health`, Swagger at `/docs`), web page, Docker Compose
-- [x] Tests: 44 (unit + PostgreSQL integration), 83% coverage
+- [x] Tests: 54 (unit + PostgreSQL integration), 83% coverage
 - [x] Evaluation: 30 known-item questions, vector vs keyword vs hybrid (Recall@k, MRR)
-- [ ] CI
+- [x] CI: GitHub Actions runs lint and all tests (with a pgvector service container), then builds the Docker image and publishes it to GHCR
 - [ ] Deployment, agent with tool calling, Kubernetes manifests
 
 ## Quick start
