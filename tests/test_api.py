@@ -11,6 +11,7 @@ import requests
 from fastapi.testclient import TestClient
 
 import app.main as main
+from app.ratelimit import SlidingWindowLimiter
 from app.retrieve import Passage
 from tests.test_answer import FakeLLM
 
@@ -41,6 +42,9 @@ class FakePool:
 def client(monkeypatch):
     monkeypatch.setattr(main, "retrieve", lambda conn, q: PASSAGES)
     main.app.state.pool = FakePool()
+    # limits off by default; the rate-limit tests below switch them on
+    main.app.state.client_limiter = SlidingWindowLimiter(0, 60)
+    main.app.state.global_limiter = SlidingWindowLimiter(0, 60)
     return TestClient(main.app)
 
 
@@ -97,3 +101,36 @@ def test_ask_is_503_when_llm_provider_is_down(client):
 def test_index_page_is_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "NeuroLit" in r.text
+
+
+ANSWER = {"found": True, "answer": "Tau PET predicts decline [111].", "citations": []}
+
+
+def test_ask_is_429_after_per_client_limit(client):
+    main.app.state.llm = FakeLLM(*[ANSWER] * 3)
+    main.app.state.client_limiter = SlidingWindowLimiter(2, 600)
+    codes = [client.post("/ask", json={"question": "tau?"}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+
+
+def test_global_limit_rejection_does_not_use_up_the_client_quota(client):
+    main.app.state.llm = FakeLLM(*[ANSWER] * 2)
+    main.app.state.client_limiter = SlidingWindowLimiter(1, 600)
+    main.app.state.global_limiter = SlidingWindowLimiter(1, 60)
+    main.app.state.global_limiter.retry_after("all")  # someone else used the global quota
+    resp = client.post("/ask", json={"question": "tau?"})
+    assert resp.status_code == 429 and "busy" in resp.json()["detail"]
+    assert int(resp.headers["retry-after"]) >= 1
+    main.app.state.global_limiter = SlidingWindowLimiter(0, 60)
+    assert client.post("/ask", json={"question": "tau?"}).status_code == 200
+
+
+def test_client_id_uses_forwarded_header_only_when_trusted(client, monkeypatch):
+    main.app.state.llm = FakeLLM(*[ANSWER] * 3)
+    main.app.state.client_limiter = SlidingWindowLimiter(1, 600)
+    monkeypatch.setattr(main.config, "TRUST_PROXY", True)
+    for ip in ("1.1.1.1", "2.2.2.2"):  # two visitors behind the same proxy
+        r = client.post("/ask", json={"question": "tau?"}, headers={"X-Forwarded-For": f"{ip}, 10.0.0.1"})
+        assert r.status_code == 200
+    r = client.post("/ask", json={"question": "tau?"}, headers={"X-Forwarded-For": "1.1.1.1"})
+    assert r.status_code == 429

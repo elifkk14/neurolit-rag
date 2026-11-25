@@ -26,3 +26,13 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "vector")
 # Keyword search ignores words that occur in more than this share of chunks (see db/schema.sql).
 KEYWORD_MAX_DF = float(os.getenv("KEYWORD_MAX_DF", "0.5"))
+
+# Rate limits for the public demo. The free Groq tier allows ~8k tokens/min, about 3 questions/min,
+# so without a limit one visitor could use up the quota for everyone. 0 disables a limit.
+RATE_LIMIT_PER_CLIENT = int(os.getenv("RATE_LIMIT_PER_CLIENT", "5"))  # questions per client ...
+RATE_LIMIT_CLIENT_WINDOW_S = int(os.getenv("RATE_LIMIT_CLIENT_WINDOW_S", "600"))  # ... per 10 minutes
+RATE_LIMIT_GLOBAL = int(os.getenv("RATE_LIMIT_GLOBAL", "3"))  # questions for all clients ...
+RATE_LIMIT_GLOBAL_WINDOW_S = int(os.getenv("RATE_LIMIT_GLOBAL_WINDOW_S", "60"))  # ... per minute
+# Behind a hosting proxy every request comes from the proxy's address; the visitor's address is
+# in X-Forwarded-For. Only trust that header when a proxy you control sets it.
+TRUST_PROXY = os.getenv("TRUST_PROXY", "0") == "1"

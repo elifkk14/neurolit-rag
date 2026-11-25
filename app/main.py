@@ -13,16 +13,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field
 
+from app import config
 from app.answer import AnswerError, answer_question
 from app.config import DATABASE_URL
 from app.embeddings import embed_query
 from app.llm import get_llm
+from app.ratelimit import SlidingWindowLimiter
 from app.retrieve import retrieve
 
 log = logging.getLogger("app.main")
@@ -73,8 +75,15 @@ async def lifespan(app: FastAPI):
     #   - create the LLM client (fails fast if the API key is missing)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     embed_query("warm-up")
+    # check_connection: a hosted database (Neon) suspends when idle and drops connections;
+    # the pool tests a connection before handing it out and replaces it if it is dead.
     app.state.pool = ConnectionPool(
-        DATABASE_URL, min_size=1, max_size=5, configure=register_vector, open=True
+        DATABASE_URL,
+        min_size=1,
+        max_size=5,
+        configure=register_vector,
+        check=ConnectionPool.check_connection,
+        open=True,
     )
     app.state.llm = get_llm()
     log.info("ready: llm=%s", app.state.llm.name)
@@ -83,6 +92,38 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="NeuroLit", version="0.1.0", lifespan=lifespan)
+app.state.client_limiter = SlidingWindowLimiter(
+    config.RATE_LIMIT_PER_CLIENT, config.RATE_LIMIT_CLIENT_WINDOW_S
+)
+app.state.global_limiter = SlidingWindowLimiter(config.RATE_LIMIT_GLOBAL, config.RATE_LIMIT_GLOBAL_WINDOW_S)
+
+
+def client_id(request: Request) -> str:
+    if config.TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def check_rate_limit(request: Request) -> None:
+    """Raise 429 when this client, or all clients together, asked too much recently."""
+    key = client_id(request)
+    wait = app.state.client_limiter.retry_after(key)
+    if wait:
+        raise HTTPException(
+            429,
+            f"Question limit reached for this demo. Try again in {int(wait // 60) + 1} min.",
+            headers={"Retry-After": str(int(wait) + 1)},
+        )
+    wait = app.state.global_limiter.retry_after("all")
+    if wait:
+        app.state.client_limiter.undo(key)  # this request is not served, so do not count it
+        raise HTTPException(
+            429,
+            f"The demo is busy (free model quota). Try again in {int(wait) + 1} s.",
+            headers={"Retry-After": str(int(wait) + 1)},
+        )
 
 
 # ---------------------------------------------------------------- endpoints
@@ -107,7 +148,8 @@ def health() -> dict:
 # Plain `def` (not async): FastAPI runs it in a worker thread, so a slow LLM call
 # does not block other requests.
 @app.post("/ask", response_model=AskResponse)
-def ask(req: AskRequest) -> AskResponse:
+def ask(req: AskRequest, request: Request) -> AskResponse:
+    check_rate_limit(request)
     question = req.question.strip()
 
     t0 = time.perf_counter()
