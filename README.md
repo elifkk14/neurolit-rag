@@ -9,6 +9,8 @@ abstracts, with every claim linked to its source (PMID).
 **Live demo: https://neurolit-2e56.onrender.com** (free tier: after 15 idle minutes the first
 request wakes the server, which takes about a minute; limited to 5 questions per visitor per 10 minutes).
 
+<p align="center"><img src="docs/screenshot.jpg" width="640" alt="NeuroLit answering whether FDG-PET can distinguish Alzheimer's disease from frontotemporal dementia, with a PubMed citation after every sentence and the sources listed below"></p>
+
 ## Status
 
 - [x] PubMed ingestion (E-utilities `esearch` + `efetch`)
@@ -146,3 +148,7 @@ Why stratified: PubMed returns newest records first, so the first 5,000 hits wer
 from 2024-2026 and the field's earlier key papers were missing.
 
 Data comes only from public PubMed abstracts. This tool is for literature search, not medical advice.
+
+## License
+
+[MIT](LICENSE)
